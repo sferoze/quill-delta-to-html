@@ -396,6 +396,9 @@ var OpToHtmlConverter = (function () {
         var tagAttrs = classes.length ? [makeAttr('class', classes.join(' '))] : [];
         if (this.op.isImage()) {
             this.op.attributes.width && (tagAttrs = tagAttrs.concat(makeAttr('width', this.op.attributes.width)));
+            if (typeof this.op.insert.value === 'object' && this.op.insert.value.url) {
+              this.op.insert.value = this.op.insert.value.url;
+            }
             return tagAttrs.concat(makeAttr('src', (this.op.insert.value + '')._scrubUrl()));
         }
         if (this.op.isFormula() || this.op.isContainerBlock()) {
