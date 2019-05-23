@@ -1,15 +1,15 @@
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.QuillDeltaToHtmlConverter = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.QuillDeltaToHtmlConverter = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var value_types_1 = require("./value-types");
 var InsertData_1 = require("./InsertData");
 var DeltaInsertOp = (function () {
-    function DeltaInsertOp(insertVal, attributes) {
+    function DeltaInsertOp(insertVal, attrs) {
         if (typeof insertVal === 'string') {
             insertVal = new InsertData_1.InsertDataQuill(value_types_1.DataType.Text, insertVal + '');
         }
         this.insert = insertVal;
-        this.attributes = attributes || {};
+        this.attributes = attrs || {};
     }
     DeltaInsertOp.createNewLineOp = function () {
         return new DeltaInsertOp(value_types_1.NewLine);
@@ -20,7 +20,7 @@ var DeltaInsertOp = (function () {
             attrs.header || attrs.align || attrs.direction || attrs.indent);
     };
     DeltaInsertOp.prototype.isBlockquote = function () {
-        return this.attributes.blockquote;
+        return !!this.attributes.blockquote;
     };
     DeltaInsertOp.prototype.isHeader = function () {
         return !!this.attributes.header;
@@ -40,7 +40,7 @@ var DeltaInsertOp = (function () {
         return (Number(this.attributes.indent) || 0) > (Number(op.attributes.indent) || 0);
     };
     DeltaInsertOp.prototype.isInline = function () {
-        return !(this.isContainerBlock() || this.isVideo());
+        return !(this.isContainerBlock() || this.isVideo() || this.isCustomBlock());
     };
     DeltaInsertOp.prototype.isCodeBlock = function () {
         return !!this.attributes['code-block'];
@@ -49,7 +49,10 @@ var DeltaInsertOp = (function () {
         return this.insert.value === value_types_1.NewLine;
     };
     DeltaInsertOp.prototype.isList = function () {
-        return this.isOrderedList() || this.isBulletList();
+        return (this.isOrderedList() ||
+            this.isBulletList() ||
+            this.isCheckedList() ||
+            this.isUncheckedList());
     };
     DeltaInsertOp.prototype.isOrderedList = function () {
         return this.attributes.list === value_types_1.ListType.Ordered;
@@ -57,8 +60,19 @@ var DeltaInsertOp = (function () {
     DeltaInsertOp.prototype.isBulletList = function () {
         return this.attributes.list === value_types_1.ListType.Bullet;
     };
+    DeltaInsertOp.prototype.isCheckedList = function () {
+        return this.attributes.list === value_types_1.ListType.Checked;
+    };
+    DeltaInsertOp.prototype.isUncheckedList = function () {
+        return this.attributes.list === value_types_1.ListType.Unchecked;
+    };
+    DeltaInsertOp.prototype.isACheckList = function () {
+        return this.attributes.list == value_types_1.ListType.Unchecked ||
+            this.attributes.list === value_types_1.ListType.Checked;
+    };
     DeltaInsertOp.prototype.isSameListAs = function (op) {
-        return this.attributes.list === op.attributes.list && !!op.attributes.list;
+        return !!op.attributes.list && (this.attributes.list === op.attributes.list ||
+            op.isACheckList() && this.isACheckList());
     };
     DeltaInsertOp.prototype.isText = function () {
         return this.insert.type === value_types_1.DataType.Text;
@@ -78,6 +92,9 @@ var DeltaInsertOp = (function () {
     DeltaInsertOp.prototype.isCustom = function () {
         return this.insert instanceof InsertData_1.InsertDataCustom;
     };
+    DeltaInsertOp.prototype.isCustomBlock = function () {
+        return this.isCustom() && !!this.attributes.renderAsBlock;
+    };
     DeltaInsertOp.prototype.isMentions = function () {
         return this.isText() && !!this.attributes.mentions;
     };
@@ -85,7 +102,7 @@ var DeltaInsertOp = (function () {
 }());
 exports.DeltaInsertOp = DeltaInsertOp;
 
-},{"./InsertData":2,"./value-types":16}],2:[function(require,module,exports){
+},{"./InsertData":2,"./value-types":17}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var InsertDataQuill = (function () {
@@ -111,8 +128,8 @@ exports.InsertDataCustom = InsertDataCustom;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var value_types_1 = require("./value-types");
-require("./extensions/String");
-require("./extensions/Object");
+var str = require("./helpers/string");
+var obj = require("./helpers/object");
 var InsertOpDenormalizer = (function () {
     function InsertOpDenormalizer() {
     }
@@ -123,16 +140,16 @@ var InsertOpDenormalizer = (function () {
         if (typeof op.insert === 'object' || op.insert === value_types_1.NewLine) {
             return [op];
         }
-        var newlinedArray = (op.insert + '')._tokenizeWithNewLines();
+        var newlinedArray = str.tokenizeWithNewLines(op.insert + '');
         if (newlinedArray.length === 1) {
             return [op];
         }
-        var nlObj = Object._assign({}, op, { insert: value_types_1.NewLine });
+        var nlObj = obj.assign({}, op, { insert: value_types_1.NewLine });
         return newlinedArray.map(function (line) {
             if (line === value_types_1.NewLine) {
                 return nlObj;
             }
-            return Object._assign({}, op, {
+            return obj.assign({}, op, {
                 insert: line
             });
         });
@@ -141,7 +158,7 @@ var InsertOpDenormalizer = (function () {
 }());
 exports.InsertOpDenormalizer = InsertOpDenormalizer;
 
-},{"./extensions/Object":9,"./extensions/String":10,"./value-types":16}],4:[function(require,module,exports){
+},{"./helpers/object":13,"./helpers/string":14,"./value-types":17}],4:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var DeltaInsertOp_1 = require("./DeltaInsertOp");
@@ -152,7 +169,7 @@ var InsertOpDenormalizer_1 = require("./InsertOpDenormalizer");
 var InsertOpsConverter = (function () {
     function InsertOpsConverter() {
     }
-    InsertOpsConverter.convert = function (deltaOps) {
+    InsertOpsConverter.convert = function (deltaOps, options) {
         if (!Array.isArray(deltaOps)) {
             return [];
         }
@@ -164,16 +181,16 @@ var InsertOpsConverter = (function () {
             if (!op.insert) {
                 continue;
             }
-            insertVal = InsertOpsConverter.convertInsertVal(op.insert);
+            insertVal = InsertOpsConverter.convertInsertVal(op.insert, options);
             if (!insertVal) {
                 continue;
             }
-            attributes = OpAttributeSanitizer_1.OpAttributeSanitizer.sanitize(op.attributes);
+            attributes = OpAttributeSanitizer_1.OpAttributeSanitizer.sanitize(op.attributes, options);
             results.push(new DeltaInsertOp_1.DeltaInsertOp(insertVal, attributes));
         }
         return results;
     };
-    InsertOpsConverter.convertInsertVal = function (insertPropVal) {
+    InsertOpsConverter.convertInsertVal = function (insertPropVal, sanitizeOptions) {
         if (typeof insertPropVal === 'string') {
             return new InsertData_1.InsertDataQuill(value_types_1.DataType.Text, insertPropVal);
         }
@@ -185,9 +202,9 @@ var InsertOpsConverter = (function () {
             return null;
         }
         return value_types_1.DataType.Image in insertPropVal ?
-            new InsertData_1.InsertDataQuill(value_types_1.DataType.Image, insertPropVal[value_types_1.DataType.Image])
+            new InsertData_1.InsertDataQuill(value_types_1.DataType.Image, OpAttributeSanitizer_1.OpAttributeSanitizer.sanitizeLinkUsingOptions(insertPropVal[value_types_1.DataType.Image] + '', sanitizeOptions))
             : value_types_1.DataType.Video in insertPropVal ?
-                new InsertData_1.InsertDataQuill(value_types_1.DataType.Video, insertPropVal[value_types_1.DataType.Video])
+                new InsertData_1.InsertDataQuill(value_types_1.DataType.Video, OpAttributeSanitizer_1.OpAttributeSanitizer.sanitizeLinkUsingOptions(insertPropVal[value_types_1.DataType.Video] + '', sanitizeOptions))
                 : value_types_1.DataType.Formula in insertPropVal ?
                     new InsertData_1.InsertDataQuill(value_types_1.DataType.Formula, insertPropVal[value_types_1.DataType.Formula])
                     : new InsertData_1.InsertDataCustom(keys[0], insertPropVal[keys[0]]);
@@ -196,23 +213,24 @@ var InsertOpsConverter = (function () {
 }());
 exports.InsertOpsConverter = InsertOpsConverter;
 
-},{"./DeltaInsertOp":1,"./InsertData":2,"./InsertOpDenormalizer":3,"./OpAttributeSanitizer":5,"./value-types":16}],5:[function(require,module,exports){
+},{"./DeltaInsertOp":1,"./InsertData":2,"./InsertOpDenormalizer":3,"./OpAttributeSanitizer":5,"./value-types":17}],5:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var value_types_1 = require("./value-types");
 var MentionSanitizer_1 = require("./mentions/MentionSanitizer");
-require("./extensions/String");
+var url = require("./helpers/url");
+var funcs_html_1 = require("./funcs-html");
 var OpAttributeSanitizer = (function () {
     function OpAttributeSanitizer() {
     }
-    OpAttributeSanitizer.sanitize = function (dirtyAttrs) {
+    OpAttributeSanitizer.sanitize = function (dirtyAttrs, sanitizeOptions) {
         var cleanAttrs = {};
         if (!dirtyAttrs || typeof dirtyAttrs !== 'object') {
             return cleanAttrs;
         }
         var booleanAttrs = [
             'bold', 'italic', 'underline', 'strike', 'code',
-            'blockquote', 'code-block'
+            'blockquote', 'code-block', 'renderAsBlock'
         ];
         var colorAttrs = ['background', 'color'];
         var font = dirtyAttrs.font, size = dirtyAttrs.size, link = dirtyAttrs.link, script = dirtyAttrs.script, list = dirtyAttrs.list, header = dirtyAttrs.header, align = dirtyAttrs.align, direction = dirtyAttrs.direction, indent = dirtyAttrs.indent, mentions = dirtyAttrs.mentions, mention = dirtyAttrs.mention, width = dirtyAttrs.width, target = dirtyAttrs.target;
@@ -227,7 +245,8 @@ var OpAttributeSanitizer = (function () {
         colorAttrs.forEach(function (prop) {
             var val = dirtyAttrs[prop];
             if (val && (OpAttributeSanitizer.IsValidHexColor(val + '') ||
-                OpAttributeSanitizer.IsValidColorLiteral(val + ''))) {
+                OpAttributeSanitizer.IsValidColorLiteral(val + '') ||
+                OpAttributeSanitizer.IsValidRGBColor(val + ''))) {
                 cleanAttrs[prop] = val;
             }
         });
@@ -241,7 +260,7 @@ var OpAttributeSanitizer = (function () {
             cleanAttrs.width = width;
         }
         if (link) {
-            cleanAttrs.link = (link + '')._scrubUrl();
+            cleanAttrs.link = OpAttributeSanitizer.sanitizeLinkUsingOptions(link + '', sanitizeOptions);
         }
         if (target && OpAttributeSanitizer.isValidTarget(target)) {
             cleanAttrs.target = target;
@@ -249,13 +268,13 @@ var OpAttributeSanitizer = (function () {
         if (script === value_types_1.ScriptType.Sub || value_types_1.ScriptType.Super === script) {
             cleanAttrs.script = script;
         }
-        if (list === value_types_1.ListType.Bullet || list === value_types_1.ListType.Ordered) {
+        if (list === value_types_1.ListType.Bullet || list === value_types_1.ListType.Ordered || list === value_types_1.ListType.Checked || list === value_types_1.ListType.Unchecked) {
             cleanAttrs.list = list;
         }
         if (Number(header)) {
             cleanAttrs.header = Math.min(Number(header), 6);
         }
-        if (align === value_types_1.AlignType.Center || align === value_types_1.AlignType.Right) {
+        if (align === value_types_1.AlignType.Center || align === value_types_1.AlignType.Right || align === value_types_1.AlignType.Justify) {
             cleanAttrs.align = align;
         }
         if (direction === value_types_1.DirectionType.Rtl) {
@@ -265,7 +284,7 @@ var OpAttributeSanitizer = (function () {
             cleanAttrs.indent = Math.min(Number(indent), 30);
         }
         if (mentions && mention) {
-            var sanitizedMention = MentionSanitizer_1.MentionSanitizer.sanitize(mention);
+            var sanitizedMention = MentionSanitizer_1.MentionSanitizer.sanitize(mention, sanitizeOptions);
             if (Object.keys(sanitizedMention).length > 0) {
                 cleanAttrs.mentions = !!mentions;
                 cleanAttrs.mention = mention;
@@ -279,11 +298,25 @@ var OpAttributeSanitizer = (function () {
             return cleaned;
         }, cleanAttrs);
     };
+    OpAttributeSanitizer.sanitizeLinkUsingOptions = function (link, options) {
+        var sanitizerFn = function () { return undefined; };
+        if (options && typeof options.urlSanitizer === 'function') {
+            sanitizerFn = options.urlSanitizer;
+        }
+        var result = sanitizerFn(link);
+        return typeof result === 'string' ?
+            result :
+            funcs_html_1.encodeLink(url.sanitize(link));
+    };
     OpAttributeSanitizer.IsValidHexColor = function (colorStr) {
         return !!colorStr.match(/^#([0-9A-F]{6}|[0-9A-F]{3})$/i);
     };
     OpAttributeSanitizer.IsValidColorLiteral = function (colorStr) {
         return !!colorStr.match(/^[a-z]{1,50}$/i);
+    };
+    OpAttributeSanitizer.IsValidRGBColor = function (colorStr) {
+        var re = /^rgb\(((0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d),\s*){2}(0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d)\)$/i;
+        return !!colorStr.match(re);
     };
     OpAttributeSanitizer.IsValidFontName = function (fontName) {
         return !!fontName.match(/^[a-z\s0-9\- ]{1,30}$/i);
@@ -301,20 +334,46 @@ var OpAttributeSanitizer = (function () {
 }());
 exports.OpAttributeSanitizer = OpAttributeSanitizer;
 
-},{"./extensions/String":10,"./mentions/MentionSanitizer":15,"./value-types":16}],6:[function(require,module,exports){
+},{"./funcs-html":8,"./helpers/url":15,"./mentions/MentionSanitizer":16,"./value-types":17}],6:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var funcs_html_1 = require("./funcs-html");
 var value_types_1 = require("./value-types");
-require("./extensions/String");
-require("./extensions/Object");
-require("./extensions/Array");
+var obj = require("./helpers/object");
+var arr = require("./helpers/array");
 var OpAttributeSanitizer_1 = require("./OpAttributeSanitizer");
+;
+var DEFAULT_INLINE_FONTS = {
+    serif: 'font-family: Georgia, Times New Roman, serif',
+    monospace: 'font-family: Monaco, Courier New, monospace'
+};
+exports.DEFAULT_INLINE_STYLES = {
+    font: function (value) { return DEFAULT_INLINE_FONTS[value] || ('font-family:' + value); },
+    size: {
+        'small': 'font-size: 0.75em',
+        'large': 'font-size: 1.5em',
+        'huge': 'font-size: 2.5em'
+    },
+    indent: function (value, op) {
+        var indentSize = parseInt(value, 10) * 3;
+        var side = op.attributes['direction'] === 'rtl' ? 'right' : 'left';
+        return 'padding-' + side + ':' + indentSize + 'em';
+    },
+    direction: function (value, op) {
+        if (value === 'rtl') {
+            return 'direction:rtl' + (op.attributes['align'] ? '' : '; text-align:inherit');
+        }
+        else {
+            return undefined;
+        }
+    }
+};
 var OpToHtmlConverter = (function () {
     function OpToHtmlConverter(op, options) {
         this.op = op;
-        this.options = Object._assign({}, {
+        this.options = obj.assign({}, {
             classPrefix: 'ql',
+            inlineStyles: undefined,
             encodeHtml: true,
             listItemTag: 'li',
             paragraphTag: 'p'
@@ -331,6 +390,7 @@ var OpToHtmlConverter = (function () {
         return parts.openingTag + parts.content + parts.closingTag;
     };
     OpToHtmlConverter.prototype.getHtmlParts = function () {
+        var _this = this;
         if (this.op.isJustNewline() && !this.op.isContainerBlock()) {
             return { openingTag: '', closingTag: '', content: value_types_1.NewLine };
         }
@@ -339,11 +399,19 @@ var OpToHtmlConverter = (function () {
             tags.push('span');
         }
         var beginTags = [], endTags = [];
+        var imgTag = "img";
+        var isImageLink = function (tag) { return tag === imgTag && !!_this.op.attributes.link; };
         for (var _i = 0, tags_1 = tags; _i < tags_1.length; _i++) {
             var tag = tags_1[_i];
+            if (isImageLink(tag)) {
+                beginTags.push(funcs_html_1.makeStartTag('a', this.getLinkAttrs()));
+            }
             beginTags.push(funcs_html_1.makeStartTag(tag, attrs));
             endTags.push(tag === 'img' ? '' : funcs_html_1.makeEndTag(tag));
-            attrs = null;
+            if (isImageLink(tag)) {
+                endTags.push(funcs_html_1.makeEndTag('a'));
+            }
+            attrs = [];
         }
         endTags.reverse();
         return {
@@ -364,6 +432,9 @@ var OpToHtmlConverter = (function () {
     };
     OpToHtmlConverter.prototype.getCssClasses = function () {
         var attrs = this.op.attributes;
+        if (this.options.inlineStyles) {
+            return [];
+        }
         var propsArr = ['indent', 'align', 'direction', 'font', 'size'];
         if (this.options.allowBackgroundClasses) {
             propsArr.push('background');
@@ -378,34 +449,60 @@ var OpToHtmlConverter = (function () {
             .map(this.prefixClass.bind(this));
     };
     OpToHtmlConverter.prototype.getCssStyles = function () {
+        var _this = this;
         var attrs = this.op.attributes;
         var propsArr = [['color']];
-        if (!this.options.allowBackgroundClasses) {
+        if (!!this.options.inlineStyles || !this.options.allowBackgroundClasses) {
             propsArr.push(['background', 'background-color']);
+        }
+        if (this.options.inlineStyles) {
+            propsArr = propsArr.concat([
+                ['indent'],
+                ['align', 'text-align'],
+                ['direction'],
+                ['font', 'font-family'],
+                ['size']
+            ]);
         }
         return propsArr
             .filter(function (item) { return !!attrs[item[0]]; })
-            .map(function (item) { return item._preferSecond() + ':' + attrs[item[0]]; });
+            .map(function (item) {
+            var attribute = item[0];
+            var attrValue = attrs[attribute];
+            var attributeConverter = (_this.options.inlineStyles && _this.options.inlineStyles[attribute]) ||
+                exports.DEFAULT_INLINE_STYLES[attribute];
+            if (typeof (attributeConverter) === 'object') {
+                return attributeConverter[attrValue];
+            }
+            else if (typeof (attributeConverter) === 'function') {
+                var converterFn = attributeConverter;
+                return converterFn(attrValue, _this.op);
+            }
+            else {
+                return arr.preferSecond(item) + ':' + attrValue;
+            }
+        })
+            .filter(function (item) { return item !== undefined; });
     };
     OpToHtmlConverter.prototype.getTagAttributes = function () {
-        if (this.op.attributes.code) {
+        if (this.op.attributes.code && !this.op.isLink()) {
             return [];
         }
-        var makeAttr = function (k, v) { return ({ key: k, value: v }); };
+        var makeAttr = this.makeAttr.bind(this);
         var classes = this.getCssClasses();
         var tagAttrs = classes.length ? [makeAttr('class', classes.join(' '))] : [];
         if (this.op.isImage()) {
             this.op.attributes.width && (tagAttrs = tagAttrs.concat(makeAttr('width', this.op.attributes.width)));
-            if (typeof this.op.insert.value === 'object' && this.op.insert.value.url) {
-              this.op.insert.value = this.op.insert.value.url;
-            }
-            return tagAttrs.concat(makeAttr('src', (this.op.insert.value + '')._scrubUrl()));
+            return tagAttrs.concat(makeAttr('src', this.op.insert.value));
         }
-        if (this.op.isFormula() || this.op.isContainerBlock()) {
+        if (this.op.isACheckList()) {
+            return tagAttrs.concat(makeAttr('data-checked', this.op.isCheckedList() ? 'true' : 'false'));
+        }
+        if (this.op.isFormula()) {
             return tagAttrs;
         }
         if (this.op.isVideo()) {
-            return tagAttrs.concat(makeAttr('frameborder', '0'), makeAttr('allowfullscreen', 'true'), makeAttr('src', (this.op.insert.value + '')._scrubUrl()));
+            return tagAttrs.concat(makeAttr('frameborder', '0'), makeAttr('allowfullscreen', 'true'), makeAttr('src', this.op.insert.value));
         }
         if (this.op.isMentions()) {
             var mention = this.op.attributes.mention;
@@ -413,10 +510,10 @@ var OpToHtmlConverter = (function () {
                 tagAttrs = tagAttrs.concat(makeAttr('class', mention.class));
             }
             if (mention['end-point'] && mention.slug) {
-                tagAttrs = tagAttrs.concat(makeAttr('href', funcs_html_1.encodeLink(mention['end-point'] + '/' + mention.slug)));
+                tagAttrs = tagAttrs.concat(makeAttr('href', mention['end-point'] + '/' + mention.slug));
             }
             else {
-                tagAttrs = tagAttrs.concat(makeAttr('href', 'javascript:void(0)'));
+                tagAttrs = tagAttrs.concat(makeAttr('href', 'about:blank'));
             }
             if (mention.target) {
                 tagAttrs = tagAttrs.concat(makeAttr('target', mention.target));
@@ -424,24 +521,33 @@ var OpToHtmlConverter = (function () {
             return tagAttrs;
         }
         var styles = this.getCssStyles();
-        var styleAttr = styles.length ? [makeAttr('style', styles.join(';'))] : [];
-        tagAttrs = tagAttrs.concat(styleAttr);
+        if (styles.length) {
+            tagAttrs.push(makeAttr('style', styles.join(';')));
+        }
+        if (this.op.isContainerBlock()) {
+            return tagAttrs;
+        }
         if (this.op.isLink()) {
-            var target = this.op.attributes.target || this.options.linkTarget;
-            tagAttrs = tagAttrs
-                .concat(makeAttr('href', funcs_html_1.encodeLink(this.op.attributes.link)))
-                .concat(target ? makeAttr('target', target) : []);
-            if (!!this.options.linkRel && OpToHtmlConverter.IsValidRel(this.options.linkRel)) {
-                tagAttrs.push(makeAttr('rel', this.options.linkRel));
-            }
+            tagAttrs = tagAttrs.concat(this.getLinkAttrs());
+        }
+        return tagAttrs;
+    };
+    OpToHtmlConverter.prototype.makeAttr = function (k, v) {
+        return { key: k, value: v };
+    };
+    OpToHtmlConverter.prototype.getLinkAttrs = function () {
+        var tagAttrs = [];
+        var target = this.op.attributes.target || this.options.linkTarget;
+        tagAttrs = tagAttrs
+            .concat(this.makeAttr('href', this.op.attributes.link))
+            .concat(target ? this.makeAttr('target', target) : []);
+        if (!!this.options.linkRel && OpToHtmlConverter.IsValidRel(this.options.linkRel)) {
+            tagAttrs.push(this.makeAttr('rel', this.options.linkRel));
         }
         return tagAttrs;
     };
     OpToHtmlConverter.prototype.getTags = function () {
         var attrs = this.op.attributes;
-        if (attrs.code) {
-            return ['code'];
-        }
         if (!this.op.isText()) {
             return [this.op.isVideo() ? 'iframe'
                     : this.op.isImage() ? 'img'
@@ -455,18 +561,19 @@ var OpToHtmlConverter = (function () {
             ['indent', positionTag]];
         for (var _i = 0, blocks_1 = blocks; _i < blocks_1.length; _i++) {
             var item = blocks_1[_i];
-            if (attrs[item[0]]) {
-                return item[0] === 'header' ? ['h' + attrs[item[0]]] : [item._preferSecond()];
+            var firstItem = item[0];
+            if (attrs[firstItem]) {
+                return firstItem === 'header' ? ['h' + attrs[firstItem]] : [arr.preferSecond(item)];
             }
         }
-        return [['link', 'a'], ['script'],
+        return [['link', 'a'], ['mentions', 'a'], ['script'],
             ['bold', 'strong'], ['italic', 'em'], ['strike', 's'], ['underline', 'u'],
-            ['mentions', 'a']]
+            ['code']]
             .filter(function (item) { return !!attrs[item[0]]; })
             .map(function (item) {
             return item[0] === 'script' ?
                 (attrs[item[0]] === value_types_1.ScriptType.Sub ? 'sub' : 'sup')
-                : item._preferSecond();
+                : arr.preferSecond(item);
         });
     };
     OpToHtmlConverter.IsValidRel = function (relStr) {
@@ -476,7 +583,7 @@ var OpToHtmlConverter = (function () {
 }());
 exports.OpToHtmlConverter = OpToHtmlConverter;
 
-},{"./OpAttributeSanitizer":5,"./extensions/Array":8,"./extensions/Object":9,"./extensions/String":10,"./funcs-html":11,"./value-types":16}],7:[function(require,module,exports){
+},{"./OpAttributeSanitizer":5,"./funcs-html":8,"./helpers/array":12,"./helpers/object":13,"./value-types":17}],7:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var InsertOpsConverter_1 = require("./InsertOpsConverter");
@@ -485,20 +592,22 @@ var Grouper_1 = require("./grouper/Grouper");
 var group_types_1 = require("./grouper/group-types");
 var ListNester_1 = require("./grouper/ListNester");
 var funcs_html_1 = require("./funcs-html");
-require("./extensions/Object");
+var obj = require("./helpers/object");
 var value_types_1 = require("./value-types");
 var BrTag = '<br/>';
 var QuillDeltaToHtmlConverter = (function () {
     function QuillDeltaToHtmlConverter(deltaOps, options) {
         this.rawDeltaOps = [];
         this.callbacks = {};
-        this.options = Object._assign({
+        this.options = obj.assign({
             paragraphTag: 'p',
             encodeHtml: true,
             classPrefix: 'ql',
+            inlineStyles: false,
             multiLineBlockquote: true,
             multiLineHeader: true,
             multiLineCodeblock: true,
+            multiLineParagraph: true,
             allowBackgroundClasses: false,
             linkTarget: '_blank'
         }, options, {
@@ -506,9 +615,20 @@ var QuillDeltaToHtmlConverter = (function () {
             bulletListTag: 'ul',
             listItemTag: 'li'
         });
+        var inlineStyles;
+        if (!this.options.inlineStyles) {
+            inlineStyles = undefined;
+        }
+        else if (typeof (this.options.inlineStyles) === 'object') {
+            inlineStyles = this.options.inlineStyles;
+        }
+        else {
+            inlineStyles = {};
+        }
         this.converterOptions = {
             encodeHtml: this.options.encodeHtml,
             classPrefix: this.options.classPrefix,
+            inlineStyles: inlineStyles,
             listItemTag: this.options.listItemTag,
             paragraphTag: this.options.paragraphTag,
             linkRel: this.options.linkRel,
@@ -520,10 +640,12 @@ var QuillDeltaToHtmlConverter = (function () {
     QuillDeltaToHtmlConverter.prototype._getListTag = function (op) {
         return op.isOrderedList() ? this.options.orderedListTag + ''
             : op.isBulletList() ? this.options.bulletListTag + ''
-                : '';
+                : op.isCheckedList() ? this.options.bulletListTag + ''
+                    : op.isUncheckedList() ? this.options.bulletListTag + ''
+                        : '';
     };
     QuillDeltaToHtmlConverter.prototype.getGroupedOps = function () {
-        var deltaOps = InsertOpsConverter_1.InsertOpsConverter.convert(this.rawDeltaOps);
+        var deltaOps = InsertOpsConverter_1.InsertOpsConverter.convert(this.rawDeltaOps, this.options);
         var pairedOps = Grouper_1.Grouper.pairOpsWithTheirBlock(deltaOps);
         var groupedSameStyleBlocks = Grouper_1.Grouper.groupConsecutiveSameStyleBlocks(pairedOps, {
             blockquotes: !!this.options.multiLineBlockquote,
@@ -536,14 +658,17 @@ var QuillDeltaToHtmlConverter = (function () {
     };
     QuillDeltaToHtmlConverter.prototype.convert = function () {
         var _this = this;
-        return this.getGroupedOps()
-            .map(function (group) {
+        var groups = this.getGroupedOps();
+        return groups.map(function (group) {
             if (group instanceof group_types_1.ListGroup) {
                 return _this._renderWithCallbacks(value_types_1.GroupType.List, group, function () { return _this._renderList(group); });
             }
             else if (group instanceof group_types_1.BlockGroup) {
                 var g = group;
                 return _this._renderWithCallbacks(value_types_1.GroupType.Block, group, function () { return _this._renderBlock(g.op, g.ops); });
+            }
+            else if (group instanceof group_types_1.BlotBlock) {
+                return _this._renderCustom(group.op, null);
             }
             else if (group instanceof group_types_1.VideoItem) {
                 return _this._renderWithCallbacks(value_types_1.GroupType.Video, group, function () {
@@ -554,7 +679,7 @@ var QuillDeltaToHtmlConverter = (function () {
             }
             else {
                 return _this._renderWithCallbacks(value_types_1.GroupType.InlineGroup, group, function () {
-                    return _this._renderInlines(group.ops);
+                    return _this._renderInlines(group.ops, true);
                 });
             }
         })
@@ -571,22 +696,20 @@ var QuillDeltaToHtmlConverter = (function () {
         html = typeof afterCb === 'function' ? afterCb.apply(null, [groupType, html]) : html;
         return html;
     };
-    QuillDeltaToHtmlConverter.prototype._renderList = function (list, isOuterMost) {
+    QuillDeltaToHtmlConverter.prototype._renderList = function (list) {
         var _this = this;
-        if (isOuterMost === void 0) { isOuterMost = true; }
         var firstItem = list.items[0];
         return funcs_html_1.makeStartTag(this._getListTag(firstItem.item.op))
-            + list.items.map(function (li) { return _this._renderListItem(li, isOuterMost); }).join('')
+            + list.items.map(function (li) { return _this._renderListItem(li); }).join('')
             + funcs_html_1.makeEndTag(this._getListTag(firstItem.item.op));
     };
-    QuillDeltaToHtmlConverter.prototype._renderListItem = function (li, isOuterMost) {
-        var converterOptions = Object._assign({}, this.converterOptions);
+    QuillDeltaToHtmlConverter.prototype._renderListItem = function (li) {
         li.item.op.attributes.indent = 0;
         var converter = new OpToHtmlConverter_1.OpToHtmlConverter(li.item.op, this.converterOptions);
         var parts = converter.getHtmlParts();
         var liElementsHtml = this._renderInlines(li.item.ops, false);
         return parts.openingTag + (liElementsHtml) +
-            (li.innerList ? this._renderList(li.innerList, false) : '')
+            (li.innerList ? this._renderList(li.innerList) : '')
             + parts.closingTag;
     };
     QuillDeltaToHtmlConverter.prototype._renderBlock = function (bop, ops) {
@@ -603,9 +726,9 @@ var QuillDeltaToHtmlConverter = (function () {
         var inlines = ops.map(function (op) { return _this._renderInline(op, bop); }).join('');
         return htmlParts.openingTag + (inlines || BrTag) + htmlParts.closingTag;
     };
-    QuillDeltaToHtmlConverter.prototype._renderInlines = function (ops, wrapInParagraphTag) {
+    QuillDeltaToHtmlConverter.prototype._renderInlines = function (ops, isInlineGroup) {
         var _this = this;
-        if (wrapInParagraphTag === void 0) { wrapInParagraphTag = true; }
+        if (isInlineGroup === void 0) { isInlineGroup = true; }
         var opsLen = ops.length - 1;
         var html = ops.map(function (op, i) {
             if (i > 0 && i === opsLen && op.isJustNewline()) {
@@ -613,11 +736,17 @@ var QuillDeltaToHtmlConverter = (function () {
             }
             return _this._renderInline(op, null);
         }).join('');
-        if (!wrapInParagraphTag) {
+        if (!isInlineGroup) {
             return html;
         }
-        return funcs_html_1.makeStartTag(this.options.paragraphTag) +
-            html + funcs_html_1.makeEndTag(this.options.paragraphTag);
+        var startParaTag = funcs_html_1.makeStartTag(this.options.paragraphTag);
+        var endParaTag = funcs_html_1.makeEndTag(this.options.paragraphTag);
+        if (html === BrTag || this.options.multiLineParagraph) {
+            return startParaTag + html + endParaTag;
+        }
+        return startParaTag + html.split(BrTag).map(function (v) {
+            return v === '' ? BrTag : v;
+        }).join(endParaTag + startParaTag) + endParaTag;
     };
     QuillDeltaToHtmlConverter.prototype._renderInline = function (op, contextOp) {
         if (op.isCustom()) {
@@ -650,110 +779,7 @@ var QuillDeltaToHtmlConverter = (function () {
 }());
 exports.QuillDeltaToHtmlConverter = QuillDeltaToHtmlConverter;
 
-},{"./InsertOpsConverter":4,"./OpToHtmlConverter":6,"./extensions/Object":9,"./funcs-html":11,"./grouper/Grouper":12,"./grouper/ListNester":13,"./grouper/group-types":14,"./value-types":16}],8:[function(require,module,exports){
-Array.prototype._preferSecond = function () {
-    if (this.length === 0) {
-        return null;
-    }
-    return this.length >= 2 ? this[1] : this[0];
-};
-Array.prototype._flatten = function () {
-    return this.reduce(function (pv, v) {
-        return pv.concat(Array.isArray(v) ? v._flatten() : v);
-    }, []);
-};
-Array.prototype._groupConsecutiveElementsWhile = function (predicate) {
-    var groups = [];
-    var currElm, currGroup;
-    for (var i = 0; i < this.length; i++) {
-        currElm = this[i];
-        if (i > 0 && predicate(currElm, this[i - 1])) {
-            currGroup = groups[groups.length - 1];
-            currGroup.push(currElm);
-        }
-        else {
-            groups.push([currElm]);
-        }
-    }
-    return groups.map(function (g) { return g.length === 1 ? g[0] : g; });
-};
-Array.prototype._sliceFromReverseWhile = function (startIndex, predicate) {
-    var result = {
-        elements: [],
-        sliceStartsAt: -1
-    };
-    for (var i = startIndex; i >= 0; i--) {
-        if (!predicate(this[i])) {
-            break;
-        }
-        result.sliceStartsAt = i;
-        result.elements.unshift(this[i]);
-    }
-    return result;
-};
-Array.prototype._intersperse = function (item) {
-    var _this = this;
-    return this.reduce(function (pv, v, index) {
-        pv.push(v);
-        if (index < (_this.length - 1)) {
-            pv.push(item);
-        }
-        return pv;
-    }, []);
-};
-
-},{}],9:[function(require,module,exports){
-Object._assign = function (target, varArg1, varArg2) {
-    if (varArg2 === void 0) { varArg2 = null; }
-    if (target == null) {
-        throw new TypeError('Cannot convert undefined or null to object');
-    }
-    var to = Object(target);
-    for (var index = 1; index < arguments.length; index++) {
-        var nextSource = arguments[index];
-        if (nextSource != null) {
-            for (var nextKey in nextSource) {
-                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
-                    to[nextKey] = nextSource[nextKey];
-                }
-            }
-        }
-    }
-    return to;
-};
-
-},{}],10:[function(require,module,exports){
-String.prototype._tokenizeWithNewLines = function () {
-    var NewLine = "\n";
-    var this_ = this.toString();
-    if (this_ === NewLine) {
-        return [this_];
-    }
-    var lines = this.split(NewLine);
-    if (lines.length === 1) {
-        return lines;
-    }
-    var lastIndex = lines.length - 1;
-    return lines.reduce(function (pv, line, ind) {
-        if (ind !== lastIndex) {
-            if (line !== "") {
-                pv = pv.concat(line, NewLine);
-            }
-            else {
-                pv.push(NewLine);
-            }
-        }
-        else if (line !== "") {
-            pv.push(line);
-        }
-        return pv;
-    }, []);
-};
-String.prototype._scrubUrl = function () {
-    return this.replace(/[^-A-Za-z0-9+&@#/%?=~_|!:,.;\(\)]/g, '');
-};
-
-},{}],11:[function(require,module,exports){
+},{"./InsertOpsConverter":4,"./OpToHtmlConverter":6,"./funcs-html":8,"./grouper/Grouper":9,"./grouper/ListNester":10,"./grouper/group-types":11,"./helpers/object":13,"./value-types":17}],8:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var EncodeTarget;
@@ -762,14 +788,14 @@ var EncodeTarget;
     EncodeTarget[EncodeTarget["Url"] = 1] = "Url";
 })(EncodeTarget || (EncodeTarget = {}));
 function makeStartTag(tag, attrs) {
-    if (attrs === void 0) { attrs = null; }
+    if (attrs === void 0) { attrs = undefined; }
     if (!tag) {
         return '';
     }
     var attrsStr = '';
     if (attrs) {
-        attrs = [].concat(attrs);
-        attrsStr = attrs.map(function (attr) {
+        var arrAttrs = [].concat(attrs);
+        attrsStr = arrAttrs.map(function (attr) {
             return attr.key + (attr.value ? '="' + attr.value + '"' : '');
         }).join(' ');
     }
@@ -817,7 +843,7 @@ function encodeMappings(mtype) {
     if (mtype === EncodeTarget.Html) {
         return maps.filter(function (_a) {
             var v = _a[0], _ = _a[1];
-            return v.indexOf('(') === -1 || v.indexOf(')') === -1;
+            return v.indexOf('(') === -1 && v.indexOf(')') === -1;
         });
     }
     else {
@@ -834,11 +860,11 @@ function decodeMapping(str, mapping) {
     return str.replace(new RegExp(mapping[1], 'g'), mapping[0].replace('\\', ''));
 }
 
-},{}],12:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var DeltaInsertOp_1 = require("./../DeltaInsertOp");
-require("./../extensions/Array");
+var array_1 = require("./../helpers/array");
 var group_types_1 = require("./group-types");
 var Grouper = (function () {
     function Grouper() {
@@ -846,7 +872,7 @@ var Grouper = (function () {
     Grouper.pairOpsWithTheirBlock = function (ops) {
         var result = [];
         var canBeInBlock = function (op) {
-            return !(op.isJustNewline() || op.isVideo() || op.isContainerBlock());
+            return !(op.isJustNewline() || op.isCustomBlock() || op.isVideo() || op.isContainerBlock());
         };
         var isInlineData = function (op) { return op.isInline(); };
         var lastInd = ops.length - 1;
@@ -856,13 +882,16 @@ var Grouper = (function () {
             if (op.isVideo()) {
                 result.push(new group_types_1.VideoItem(op));
             }
+            else if (op.isCustomBlock()) {
+                result.push(new group_types_1.BlotBlock(op));
+            }
             else if (op.isContainerBlock()) {
-                opsSlice = ops._sliceFromReverseWhile(i - 1, canBeInBlock);
+                opsSlice = array_1.sliceFromReverseWhile(ops, i - 1, canBeInBlock);
                 result.push(new group_types_1.BlockGroup(op, opsSlice.elements));
                 i = opsSlice.sliceStartsAt > -1 ? opsSlice.sliceStartsAt : i;
             }
             else {
-                opsSlice = ops._sliceFromReverseWhile(i - 1, isInlineData);
+                opsSlice = array_1.sliceFromReverseWhile(ops, i - 1, isInlineData);
                 result.push(new group_types_1.InlineGroup(opsSlice.elements.concat(op)));
                 i = opsSlice.sliceStartsAt > -1 ? opsSlice.sliceStartsAt : i;
             }
@@ -876,7 +905,7 @@ var Grouper = (function () {
             codeBlocks: true,
             blockquotes: true
         }; }
-        return groups._groupConsecutiveElementsWhile(function (g, gPrev) {
+        return array_1.groupConsecutiveElementsWhile(groups, function (g, gPrev) {
             if (!(g instanceof group_types_1.BlockGroup) || !(gPrev instanceof group_types_1.BlockGroup)) {
                 return false;
             }
@@ -895,12 +924,12 @@ var Grouper = (function () {
                 return elm;
             }
             var groupsLastInd = elm.length - 1;
-            elm[0].ops = elm.map(function (g, i) {
+            elm[0].ops = array_1.flatten(elm.map(function (g, i) {
                 if (!g.ops.length) {
                     return [newLineOp];
                 }
                 return g.ops.concat(i < groupsLastInd ? [newLineOp] : []);
-            })._flatten();
+            }));
             return elm[0];
         });
     };
@@ -918,26 +947,25 @@ var Grouper = (function () {
 }());
 exports.Grouper = Grouper;
 
-},{"./../DeltaInsertOp":1,"./../extensions/Array":8,"./group-types":14}],13:[function(require,module,exports){
+},{"./../DeltaInsertOp":1,"./../helpers/array":12,"./group-types":11}],10:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var group_types_1 = require("./group-types");
+var array_1 = require("./../helpers/array");
 var ListNester = (function () {
     function ListNester() {
     }
     ListNester.prototype.nest = function (groups) {
         var _this = this;
-        var result = [];
         var listBlocked = this.convertListBlocksToListGroups(groups);
         var groupedByListGroups = this.groupConsecutiveListGroups(listBlocked);
-        var nested = groupedByListGroups.map(function (group) {
+        var nested = array_1.flatten(groupedByListGroups.map(function (group) {
             if (!Array.isArray(group)) {
                 return group;
             }
             return _this.nestListSection(group);
-        })
-            ._flatten();
-        var groupRootLists = nested._groupConsecutiveElementsWhile(function (curr, prev) {
+        }));
+        var groupRootLists = array_1.groupConsecutiveElementsWhile(nested, function (curr, prev) {
             if (!(curr instanceof group_types_1.ListGroup && prev instanceof group_types_1.ListGroup)) {
                 return false;
             }
@@ -948,11 +976,11 @@ var ListNester = (function () {
                 return v;
             }
             var litems = v.map(function (g) { return g.items; });
-            return new group_types_1.ListGroup(litems._flatten());
+            return new group_types_1.ListGroup(array_1.flatten(litems));
         });
     };
     ListNester.prototype.convertListBlocksToListGroups = function (items) {
-        var grouped = items._groupConsecutiveElementsWhile(function (g, gPrev) {
+        var grouped = array_1.groupConsecutiveElementsWhile(items, function (g, gPrev) {
             return g instanceof group_types_1.BlockGroup && gPrev instanceof group_types_1.BlockGroup
                 && g.op.isList() && gPrev.op.isList() && g.op.isSameListAs(gPrev.op)
                 && g.op.hasSameIndentationAs(gPrev.op);
@@ -968,7 +996,7 @@ var ListNester = (function () {
         });
     };
     ListNester.prototype.groupConsecutiveListGroups = function (items) {
-        return items._groupConsecutiveElementsWhile(function (curr, prev) {
+        return array_1.groupConsecutiveElementsWhile(items, function (curr, prev) {
             return curr instanceof group_types_1.ListGroup && prev instanceof group_types_1.ListGroup;
         });
     };
@@ -1015,8 +1043,18 @@ var ListNester = (function () {
 }());
 exports.ListNester = ListNester;
 
-},{"./group-types":14}],14:[function(require,module,exports){
+},{"./../helpers/array":12,"./group-types":11}],11:[function(require,module,exports){
 "use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 var InlineGroup = (function () {
     function InlineGroup(ops) {
@@ -1025,13 +1063,30 @@ var InlineGroup = (function () {
     return InlineGroup;
 }());
 exports.InlineGroup = InlineGroup;
-var VideoItem = (function () {
-    function VideoItem(op) {
+var SingleItem = (function () {
+    function SingleItem(op) {
         this.op = op;
     }
-    return VideoItem;
+    return SingleItem;
 }());
+var VideoItem = (function (_super) {
+    __extends(VideoItem, _super);
+    function VideoItem() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return VideoItem;
+}(SingleItem));
 exports.VideoItem = VideoItem;
+;
+var BlotBlock = (function (_super) {
+    __extends(BlotBlock, _super);
+    function BlotBlock() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return BlotBlock;
+}(SingleItem));
+exports.BlotBlock = BlotBlock;
+;
 var BlockGroup = (function () {
     function BlockGroup(op, ops) {
         this.op = op;
@@ -1057,14 +1112,148 @@ var ListItem = (function () {
 }());
 exports.ListItem = ListItem;
 
+},{}],12:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function preferSecond(arr) {
+    if (arr.length === 0) {
+        return null;
+    }
+    return arr.length >= 2 ? arr[1] : arr[0];
+}
+exports.preferSecond = preferSecond;
+;
+function flatten(arr) {
+    return arr.reduce(function (pv, v) {
+        return pv.concat(Array.isArray(v) ? flatten(v) : v);
+    }, []);
+}
+exports.flatten = flatten;
+;
+function groupConsecutiveElementsWhile(arr, predicate) {
+    var groups = [];
+    var currElm, currGroup;
+    for (var i = 0; i < arr.length; i++) {
+        currElm = arr[i];
+        if (i > 0 && predicate(currElm, arr[i - 1])) {
+            currGroup = groups[groups.length - 1];
+            currGroup.push(currElm);
+        }
+        else {
+            groups.push([currElm]);
+        }
+    }
+    return groups.map(function (g) { return g.length === 1 ? g[0] : g; });
+}
+exports.groupConsecutiveElementsWhile = groupConsecutiveElementsWhile;
+;
+function sliceFromReverseWhile(arr, startIndex, predicate) {
+    var result = {
+        elements: [],
+        sliceStartsAt: -1
+    };
+    for (var i = startIndex; i >= 0; i--) {
+        if (!predicate(arr[i])) {
+            break;
+        }
+        result.sliceStartsAt = i;
+        result.elements.unshift(arr[i]);
+    }
+    return result;
+}
+exports.sliceFromReverseWhile = sliceFromReverseWhile;
+;
+function intersperse(arr, item) {
+    return arr.reduce(function (pv, v, index) {
+        pv.push(v);
+        if (index < (arr.length - 1)) {
+            pv.push(item);
+        }
+        return pv;
+    }, []);
+}
+exports.intersperse = intersperse;
+
+},{}],13:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function assign(target) {
+    var sources = [];
+    for (var _i = 1; _i < arguments.length; _i++) {
+        sources[_i - 1] = arguments[_i];
+    }
+    if (target == null) {
+        throw new TypeError('Cannot convert undefined or null to object');
+    }
+    var to = Object(target);
+    for (var index = 0; index < sources.length; index++) {
+        var nextSource = sources[index];
+        if (nextSource != null) {
+            for (var nextKey in nextSource) {
+                if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                    to[nextKey] = nextSource[nextKey];
+                }
+            }
+        }
+    }
+    return to;
+}
+exports.assign = assign;
+;
+
+},{}],14:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+function tokenizeWithNewLines(str) {
+    var NewLine = "\n";
+    if (str === NewLine) {
+        return [str];
+    }
+    var lines = str.split(NewLine);
+    if (lines.length === 1) {
+        return lines;
+    }
+    var lastIndex = lines.length - 1;
+    return lines.reduce(function (pv, line, ind) {
+        if (ind !== lastIndex) {
+            if (line !== "") {
+                pv = pv.concat(line, NewLine);
+            }
+            else {
+                pv.push(NewLine);
+            }
+        }
+        else if (line !== "") {
+            pv.push(line);
+        }
+        return pv;
+    }, []);
+}
+exports.tokenizeWithNewLines = tokenizeWithNewLines;
+;
+
 },{}],15:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-require("./../extensions/String");
+function sanitize(str) {
+    var val = str;
+    val = val.replace(/^\s*/gm, '');
+    var whiteList = /^((https?|s?ftp|file|blob|mailto|tel):|#|\/|data:image\/)/;
+    if (whiteList.test(val)) {
+        return val;
+    }
+    return 'unsafe:' + val;
+}
+exports.sanitize = sanitize;
+
+},{}],16:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var OpAttributeSanitizer_1 = require("./../OpAttributeSanitizer");
 var MentionSanitizer = (function () {
     function MentionSanitizer() {
     }
-    MentionSanitizer.sanitize = function (dirtyObj) {
+    MentionSanitizer.sanitize = function (dirtyObj, sanitizeOptions) {
         var cleanObj = {};
         if (!dirtyObj || typeof dirtyObj !== 'object') {
             return cleanObj;
@@ -1075,17 +1264,17 @@ var MentionSanitizer = (function () {
         if (dirtyObj.id && MentionSanitizer.IsValidId(dirtyObj.id)) {
             cleanObj.id = dirtyObj.id;
         }
-        if (MentionSanitizer.IsValidTarget(dirtyObj.target)) {
+        if (MentionSanitizer.IsValidTarget(dirtyObj.target + '')) {
             cleanObj.target = dirtyObj.target;
         }
         if (dirtyObj.avatar) {
-            cleanObj.avatar = (dirtyObj.avatar + '')._scrubUrl();
+            cleanObj.avatar = OpAttributeSanitizer_1.OpAttributeSanitizer.sanitizeLinkUsingOptions(dirtyObj.avatar + '', sanitizeOptions);
         }
         if (dirtyObj['end-point']) {
-            cleanObj['end-point'] = (dirtyObj['end-point'] + '')._scrubUrl();
+            cleanObj['end-point'] = OpAttributeSanitizer_1.OpAttributeSanitizer.sanitizeLinkUsingOptions(dirtyObj['end-point'] + '', sanitizeOptions);
         }
         if (dirtyObj.slug) {
-            cleanObj.slug = (dirtyObj.slug + '')._scrubUrl();
+            cleanObj.slug = (dirtyObj.slug + '');
         }
         return cleanObj;
     };
@@ -1102,7 +1291,7 @@ var MentionSanitizer = (function () {
 }());
 exports.MentionSanitizer = MentionSanitizer;
 
-},{"./../extensions/String":10}],16:[function(require,module,exports){
+},{"./../OpAttributeSanitizer":5}],17:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var NewLine = "\n";
@@ -1111,6 +1300,8 @@ var ListType;
 (function (ListType) {
     ListType["Ordered"] = "ordered";
     ListType["Bullet"] = "bullet";
+    ListType["Checked"] = "checked";
+    ListType["Unchecked"] = "unchecked";
 })(ListType || (ListType = {}));
 exports.ListType = ListType;
 var ScriptType;
@@ -1128,6 +1319,7 @@ var AlignType;
 (function (AlignType) {
     AlignType["Center"] = "center";
     AlignType["Right"] = "right";
+    AlignType["Justify"] = "justify";
 })(AlignType || (AlignType = {}));
 exports.AlignType = AlignType;
 var DataType;
@@ -1150,4 +1342,5 @@ exports.GroupType = GroupType;
 ;
 
 },{}]},{},[7])(7)
-});; window.QuillDeltaToHtmlConverter = window.QuillDeltaToHtmlConverter.QuillDeltaToHtmlConverter; 
+});
+; window.QuillDeltaToHtmlConverter = window.QuillDeltaToHtmlConverter ? window.QuillDeltaToHtmlConverter.QuillDeltaToHtmlConverter : window.QuillDeltaToHtmlConverter; 

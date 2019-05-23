@@ -1,6 +1,6 @@
 var delta1 = {
     "ops": [
-        {"insert":"link","attributes":{"link":"http://a.com/?x=a&b=()"}},
+        { "insert": "link", "attributes": { "link": "http://a.com/?x=a&b=()" } },
         { "insert": "This " },
         { "attributes": { "font": "monospace" }, "insert": "is" },
         { "insert": " a " }, { "attributes": { "size": "large" }, "insert": "test" },
@@ -12,21 +12,32 @@ var delta1 = {
         { "insert": " " }, { "attributes": { "background": "#ffebcc" }, "insert": "test" },
         { "insert": " " }, { "attributes": { "script": "sub" }, "insert": "the" },
         { "insert": " " }, { "attributes": { "script": "super" }, "insert": "rendering" },
-        { "insert": " of " }, { "attributes": { "link": "yahoo" }, "insert": "inline" },
+        { "insert": " of " }, { "attributes": { "link": "http://yahoo" }, "insert": "inline" },
         { "insert": " " },
         { "insert": { "formula": "x=data" } },
-        { "insert": " formats.\n" }
+        { "insert": " formats.\n" },
+        { "insert": "list" },
+        { "insert": "\n", "attributes": { "list": "bullet" } },
+        { "insert": "list" },
+        { "insert": "\n", "attributes": { "list": "checked" } },
+        {"insert": "some code", "attributes":{code:true, bold:true}},
+        {"attributes":{"italic":true,"link":"#top","code":true},"insert":"Top"},
+        {"insert":"\n"},
     ],
     html: [
-        '<p>','<a href="http://a.com/?x=a&amp;b=&#40;&#41;" target="_blank">link</a>', 'This ', '<span class="noz-font-monospace">is</span>',
+        '<p>', '<a href="http://a.com/?x=a&amp;b=&#40;&#41;" target="_blank">link</a>', 'This ', '<span class="noz-font-monospace">is</span>',
         ' a ', '<span class="noz-size-large">test</span>', ' ',
         '<strong><em>data</em></strong>', ' ',
         '<s><u>that</u></s>',
         ' is ', '<span style="color:#e60000">will</span>', ' ',
         '<span style="background-color:#ffebcc">test</span>', ' ',
         '<sub>the</sub>', ' ', '<sup>rendering</sup>', ' of ',
-        '<a href="yahoo" target="_blank">inline</a>', ' ', '<span class="noz-formula">x=data</span>',
-        ' formats.</p>'
+        '<a href="http://yahoo" target="_blank">inline</a>', ' ', '<span class="noz-formula">x=data</span>',
+        ' formats.</p>',
+        '<ul><li>list</li></ul>',
+        '<ul><li data-checked="true">list</li></ul>',
+        '<p><strong><code>some code</code></strong>',
+        '<a href="#top" target="_blank"><em><code>Top</code></em></a></p>'
     ].join('')
 };
 

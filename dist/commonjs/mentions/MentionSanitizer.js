@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-require("./../extensions/String");
+var OpAttributeSanitizer_1 = require("./../OpAttributeSanitizer");
 var MentionSanitizer = (function () {
     function MentionSanitizer() {
     }
-    MentionSanitizer.sanitize = function (dirtyObj) {
+    MentionSanitizer.sanitize = function (dirtyObj, sanitizeOptions) {
         var cleanObj = {};
         if (!dirtyObj || typeof dirtyObj !== 'object') {
             return cleanObj;
@@ -15,17 +15,17 @@ var MentionSanitizer = (function () {
         if (dirtyObj.id && MentionSanitizer.IsValidId(dirtyObj.id)) {
             cleanObj.id = dirtyObj.id;
         }
-        if (MentionSanitizer.IsValidTarget(dirtyObj.target)) {
+        if (MentionSanitizer.IsValidTarget(dirtyObj.target + '')) {
             cleanObj.target = dirtyObj.target;
         }
         if (dirtyObj.avatar) {
-            cleanObj.avatar = (dirtyObj.avatar + '')._scrubUrl();
+            cleanObj.avatar = OpAttributeSanitizer_1.OpAttributeSanitizer.sanitizeLinkUsingOptions(dirtyObj.avatar + '', sanitizeOptions);
         }
         if (dirtyObj['end-point']) {
-            cleanObj['end-point'] = (dirtyObj['end-point'] + '')._scrubUrl();
+            cleanObj['end-point'] = OpAttributeSanitizer_1.OpAttributeSanitizer.sanitizeLinkUsingOptions(dirtyObj['end-point'] + '', sanitizeOptions);
         }
         if (dirtyObj.slug) {
-            cleanObj.slug = (dirtyObj.slug + '')._scrubUrl();
+            cleanObj.slug = (dirtyObj.slug + '');
         }
         return cleanObj;
     };

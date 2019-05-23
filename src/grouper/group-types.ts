@@ -8,12 +8,14 @@ class InlineGroup {
     }
 }
 
-class VideoItem {
+class SingleItem {
     readonly op: DeltaInsertOp;
     constructor(op: DeltaInsertOp) {
         this.op = op;
     }
 }
+class VideoItem extends SingleItem {};
+class BlotBlock extends SingleItem {};
 
 class BlockGroup {
     readonly op: DeltaInsertOp;
@@ -33,8 +35,8 @@ class ListGroup {
 
 class ListItem {
     readonly item: BlockGroup;
-    innerList: ListGroup;
-    constructor(item: BlockGroup, innerList: ListGroup = null) {
+    innerList: ListGroup | null;
+    constructor(item: BlockGroup, innerList: ListGroup | null= null) {
         this.item = item;
         this.innerList = innerList;
     }
@@ -42,4 +44,4 @@ class ListItem {
 
 type TDataGroup = VideoItem | InlineGroup | BlockGroup | ListItem | ListGroup;
 
-export { VideoItem, InlineGroup, BlockGroup, ListGroup, ListItem, TDataGroup }; 
+export { VideoItem, BlotBlock, InlineGroup, BlockGroup, ListGroup, ListItem, TDataGroup }; 

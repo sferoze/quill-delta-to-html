@@ -3,12 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var value_types_1 = require("./value-types");
 var InsertData_1 = require("./InsertData");
 var DeltaInsertOp = (function () {
-    function DeltaInsertOp(insertVal, attributes) {
+    function DeltaInsertOp(insertVal, attrs) {
         if (typeof insertVal === 'string') {
             insertVal = new InsertData_1.InsertDataQuill(value_types_1.DataType.Text, insertVal + '');
         }
         this.insert = insertVal;
-        this.attributes = attributes || {};
+        this.attributes = attrs || {};
     }
     DeltaInsertOp.createNewLineOp = function () {
         return new DeltaInsertOp(value_types_1.NewLine);
@@ -19,7 +19,7 @@ var DeltaInsertOp = (function () {
             attrs.header || attrs.align || attrs.direction || attrs.indent);
     };
     DeltaInsertOp.prototype.isBlockquote = function () {
-        return this.attributes.blockquote;
+        return !!this.attributes.blockquote;
     };
     DeltaInsertOp.prototype.isHeader = function () {
         return !!this.attributes.header;
@@ -39,7 +39,7 @@ var DeltaInsertOp = (function () {
         return (Number(this.attributes.indent) || 0) > (Number(op.attributes.indent) || 0);
     };
     DeltaInsertOp.prototype.isInline = function () {
-        return !(this.isContainerBlock() || this.isVideo());
+        return !(this.isContainerBlock() || this.isVideo() || this.isCustomBlock());
     };
     DeltaInsertOp.prototype.isCodeBlock = function () {
         return !!this.attributes['code-block'];
@@ -48,7 +48,10 @@ var DeltaInsertOp = (function () {
         return this.insert.value === value_types_1.NewLine;
     };
     DeltaInsertOp.prototype.isList = function () {
-        return this.isOrderedList() || this.isBulletList();
+        return (this.isOrderedList() ||
+            this.isBulletList() ||
+            this.isCheckedList() ||
+            this.isUncheckedList());
     };
     DeltaInsertOp.prototype.isOrderedList = function () {
         return this.attributes.list === value_types_1.ListType.Ordered;
@@ -56,8 +59,19 @@ var DeltaInsertOp = (function () {
     DeltaInsertOp.prototype.isBulletList = function () {
         return this.attributes.list === value_types_1.ListType.Bullet;
     };
+    DeltaInsertOp.prototype.isCheckedList = function () {
+        return this.attributes.list === value_types_1.ListType.Checked;
+    };
+    DeltaInsertOp.prototype.isUncheckedList = function () {
+        return this.attributes.list === value_types_1.ListType.Unchecked;
+    };
+    DeltaInsertOp.prototype.isACheckList = function () {
+        return this.attributes.list == value_types_1.ListType.Unchecked ||
+            this.attributes.list === value_types_1.ListType.Checked;
+    };
     DeltaInsertOp.prototype.isSameListAs = function (op) {
-        return this.attributes.list === op.attributes.list && !!op.attributes.list;
+        return !!op.attributes.list && (this.attributes.list === op.attributes.list ||
+            op.isACheckList() && this.isACheckList());
     };
     DeltaInsertOp.prototype.isText = function () {
         return this.insert.type === value_types_1.DataType.Text;
@@ -76,6 +90,9 @@ var DeltaInsertOp = (function () {
     };
     DeltaInsertOp.prototype.isCustom = function () {
         return this.insert instanceof InsertData_1.InsertDataCustom;
+    };
+    DeltaInsertOp.prototype.isCustomBlock = function () {
+        return this.isCustom() && !!this.attributes.renderAsBlock;
     };
     DeltaInsertOp.prototype.isMentions = function () {
         return this.isText() && !!this.attributes.mentions;

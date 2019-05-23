@@ -1,41 +1,52 @@
 
 import { ListType, AlignType, DirectionType, ScriptType } from './value-types';
 import { MentionSanitizer } from "./mentions/MentionSanitizer";
-import './extensions/String';
+import * as url from './helpers/url';
+import {encodeLink} from "./funcs-html";
 import { IMention } from "./mentions/MentionSanitizer";
 
 interface IOpAttributes {
-   background?: string,
-   color?: string,
-   font?: string,
-   size?: string,
-   width?: string,
+   background?: string | undefined,
+   color?: string | undefined,
+   font?: string | undefined,
+   size?: string | undefined,
+   width?: string | undefined,
 
-   link?: string,
-   bold?: boolean,
-   italic?: boolean,
-   underline?: boolean,
-   strike?: boolean,
+   link?: string | undefined,
+   bold?: boolean | undefined,
+   italic?: boolean | undefined,
+   underline?: boolean | undefined,
+   strike?: boolean | undefined,
    script?: ScriptType,
 
-   code?: boolean,
+   code?: boolean | undefined,
 
    list?: ListType,
-   blockquote?: boolean,
-   'code-block'?: boolean,
-   header?: number,
+   blockquote?: boolean | undefined,
+   'code-block'?: boolean | undefined,
+   header?: number | undefined,
    align?: AlignType,
    direction?: DirectionType,
-   indent?: number,
+   indent?: number | undefined,
 
-   mentions?: boolean,
-   mention?: IMention,
-   target?: string
+   mentions?: boolean | undefined,
+   mention?: IMention | undefined,
+   target?: string | undefined,
+
+   // should this custom blot be rendered as block?
+   renderAsBlock?: boolean | undefined
+}
+
+interface IUrlSanitizerFn {
+   (url: string): string | undefined
+}
+interface IOpAttributeSanitizerOptions {
+   urlSanitizer?: IUrlSanitizerFn
 }
 
 class OpAttributeSanitizer {
 
-   static sanitize(dirtyAttrs: IOpAttributes): IOpAttributes {
+   static sanitize(dirtyAttrs: IOpAttributes, sanitizeOptions: IOpAttributeSanitizerOptions): IOpAttributes {
 
       var cleanAttrs: any = {};
 
@@ -44,12 +55,12 @@ class OpAttributeSanitizer {
       }
       let booleanAttrs = [
          'bold', 'italic', 'underline', 'strike', 'code',
-         'blockquote', 'code-block'
+         'blockquote', 'code-block','renderAsBlock'
       ];
 
       let colorAttrs = ['background', 'color'];
 
-      let { font, size, link, script, list, header, align, 
+      let { font, size, link, script, list, header, align,
          direction, indent, mentions, mention, width, target
       } = dirtyAttrs;
 
@@ -67,7 +78,8 @@ class OpAttributeSanitizer {
       colorAttrs.forEach(function (prop: string) {
          var val = (<any>dirtyAttrs)[prop];
          if (val && (OpAttributeSanitizer.IsValidHexColor(val + '') ||
-            OpAttributeSanitizer.IsValidColorLiteral(val + ''))) {
+            OpAttributeSanitizer.IsValidColorLiteral(val + '') ||
+            OpAttributeSanitizer.IsValidRGBColor(val + ''))) {
             cleanAttrs[prop] = val;
          }
       });
@@ -85,7 +97,7 @@ class OpAttributeSanitizer {
       }
 
       if (link) {
-         cleanAttrs.link = (link + '')._scrubUrl();
+         cleanAttrs.link = OpAttributeSanitizer.sanitizeLinkUsingOptions(link + '', sanitizeOptions);
       }
       if (target && OpAttributeSanitizer.isValidTarget(target)) {
          cleanAttrs.target = target;
@@ -95,7 +107,7 @@ class OpAttributeSanitizer {
          cleanAttrs.script = script;
       }
 
-      if (list === ListType.Bullet || list === ListType.Ordered) {
+      if (list === ListType.Bullet || list === ListType.Ordered || list === ListType.Checked || list === ListType.Unchecked) {
          cleanAttrs.list = list;
       }
 
@@ -103,7 +115,7 @@ class OpAttributeSanitizer {
          cleanAttrs.header = Math.min(Number(header), 6);
       }
 
-      if (align === AlignType.Center || align === AlignType.Right) {
+      if (align === AlignType.Center || align === AlignType.Right || align === AlignType.Justify) {
          cleanAttrs.align = align;
       }
 
@@ -114,9 +126,9 @@ class OpAttributeSanitizer {
       if (indent && Number(indent)) {
          cleanAttrs.indent = Math.min(Number(indent), 30);
       }
-      
+
       if (mentions && mention) {
-         let sanitizedMention = MentionSanitizer.sanitize(mention);
+         let sanitizedMention = MentionSanitizer.sanitize(mention, sanitizeOptions);
          if (Object.keys(sanitizedMention).length > 0) {
             cleanAttrs.mentions = !!mentions;
             cleanAttrs.mention = mention;
@@ -131,12 +143,27 @@ class OpAttributeSanitizer {
       }, cleanAttrs);
    }
 
+   static sanitizeLinkUsingOptions(link: string, options: IOpAttributeSanitizerOptions) {
+      let sanitizerFn: IUrlSanitizerFn = () => { return undefined; };
+      if (options && typeof options.urlSanitizer === 'function') {
+         sanitizerFn = options.urlSanitizer;
+      }
+      let result = sanitizerFn(link);
+      return typeof result === 'string' ? 
+         result : 
+         encodeLink(url.sanitize(link));
+   }
    static IsValidHexColor(colorStr: string) {
       return !!colorStr.match(/^#([0-9A-F]{6}|[0-9A-F]{3})$/i);
    }
 
    static IsValidColorLiteral(colorStr: string) {
       return !!colorStr.match(/^[a-z]{1,50}$/i);
+   }
+
+   static IsValidRGBColor(colorStr: string) {
+       const re = /^rgb\(((0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d),\s*){2}(0|25[0-5]|2[0-4]\d|1\d\d|0?\d?\d)\)$/i
+       return !!colorStr.match(re);
    }
 
    static IsValidFontName(fontName: string) {
@@ -156,4 +183,4 @@ class OpAttributeSanitizer {
    }
 }
 
-export { OpAttributeSanitizer, IOpAttributes }
+export { OpAttributeSanitizer, IOpAttributes, IOpAttributeSanitizerOptions }

@@ -58,11 +58,24 @@ describe('OpAttributeSanitizer', function () {
         });
     });
 
+    describe('#IsValidRGBColor()', function() {
+        it('should return true if rgb color is valid', function() {
+            assert.ok(OpAttributeSanitizer.IsValidRGBColor('rgb(0,0,0)'));
+            assert.ok(OpAttributeSanitizer.IsValidRGBColor('rgb(255, 99, 1)'));
+            assert.ok(OpAttributeSanitizer.IsValidRGBColor('RGB(254, 249, 109)'));
+            assert.equal(OpAttributeSanitizer.IsValidRGBColor('yellow'), false);
+            assert.equal(OpAttributeSanitizer.IsValidRGBColor('#FFF'), false);
+            assert.equal(OpAttributeSanitizer.IsValidRGBColor('rgb(256,0,0)'), false);
+            assert.equal(OpAttributeSanitizer.IsValidRGBColor('rgb(260,0,0)'), false);
+            assert.equal(OpAttributeSanitizer.IsValidRGBColor('rgb(2000,0,0)'), false);
+        });
+    });
+
     describe('#sanitize()', function() {
 
         it('should return empty object', function() {
             [null, 3, undefined, "fd"].forEach((v) => {
-                assert.deepEqual(OpAttributeSanitizer.sanitize(<any>v), {});
+                assert.deepEqual(OpAttributeSanitizer.sanitize(<any>v, {}), {});
             });
         });
 
@@ -92,11 +105,11 @@ describe('OpAttributeSanitizer', function () {
             }
         };
         it('should return sanitized attributes', function() {
-            assert.deepEqual(OpAttributeSanitizer.sanitize(<any>attrs), {
+            assert.deepEqual(OpAttributeSanitizer.sanitize(<any>attrs, {}), {
                 bold: true,
                 background: '#333',
                 font: 'times new roman',
-                link: 'http://',
+                link: 'http://&lt;',
                 list: 'ordered',
                 header: 3,
                 indent: 30,
@@ -117,16 +130,16 @@ describe('OpAttributeSanitizer', function () {
 
             assert.deepEqual(OpAttributeSanitizer.sanitize(<any>{
                 mentions: true, mention: 1
-            }), {});
+            }, {}), {});
 
-            assert.deepEqual(OpAttributeSanitizer.sanitize({header: 1}), {header: 1});
-            assert.deepEqual(OpAttributeSanitizer.sanitize({header: null}), {});
-            assert.deepEqual(OpAttributeSanitizer.sanitize({header: 100}), {header: 6});
-            assert.deepEqual(OpAttributeSanitizer.sanitize({align: AlignType.Center}),
+            assert.deepEqual(OpAttributeSanitizer.sanitize({header: 1}, {}), {header: 1});
+            assert.deepEqual(OpAttributeSanitizer.sanitize({header: undefined}, {}), {});
+            assert.deepEqual(OpAttributeSanitizer.sanitize({header: 100}, {}), {header: 6});
+            assert.deepEqual(OpAttributeSanitizer.sanitize({align: AlignType.Center}, {}),
                 {align: "center"});
-            assert.deepEqual(OpAttributeSanitizer.sanitize({direction: DirectionType.Rtl}),
+            assert.deepEqual(OpAttributeSanitizer.sanitize({direction: DirectionType.Rtl}, {}),
                 {direction: "rtl"});
-            assert.deepEqual(OpAttributeSanitizer.sanitize({indent: 2}),
+            assert.deepEqual(OpAttributeSanitizer.sanitize({indent: 2}, {}),
                 {indent: 2});
         });
     });

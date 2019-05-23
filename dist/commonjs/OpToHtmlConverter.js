@@ -2,15 +2,41 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var funcs_html_1 = require("./funcs-html");
 var value_types_1 = require("./value-types");
-require("./extensions/String");
-require("./extensions/Object");
-require("./extensions/Array");
+var obj = require("./helpers/object");
+var arr = require("./helpers/array");
 var OpAttributeSanitizer_1 = require("./OpAttributeSanitizer");
+;
+var DEFAULT_INLINE_FONTS = {
+    serif: 'font-family: Georgia, Times New Roman, serif',
+    monospace: 'font-family: Monaco, Courier New, monospace'
+};
+exports.DEFAULT_INLINE_STYLES = {
+    font: function (value) { return DEFAULT_INLINE_FONTS[value] || ('font-family:' + value); },
+    size: {
+        'small': 'font-size: 0.75em',
+        'large': 'font-size: 1.5em',
+        'huge': 'font-size: 2.5em'
+    },
+    indent: function (value, op) {
+        var indentSize = parseInt(value, 10) * 3;
+        var side = op.attributes['direction'] === 'rtl' ? 'right' : 'left';
+        return 'padding-' + side + ':' + indentSize + 'em';
+    },
+    direction: function (value, op) {
+        if (value === 'rtl') {
+            return 'direction:rtl' + (op.attributes['align'] ? '' : '; text-align:inherit');
+        }
+        else {
+            return undefined;
+        }
+    }
+};
 var OpToHtmlConverter = (function () {
     function OpToHtmlConverter(op, options) {
         this.op = op;
-        this.options = Object._assign({}, {
+        this.options = obj.assign({}, {
             classPrefix: 'ql',
+            inlineStyles: undefined,
             encodeHtml: true,
             listItemTag: 'li',
             paragraphTag: 'p'
@@ -27,6 +53,7 @@ var OpToHtmlConverter = (function () {
         return parts.openingTag + parts.content + parts.closingTag;
     };
     OpToHtmlConverter.prototype.getHtmlParts = function () {
+        var _this = this;
         if (this.op.isJustNewline() && !this.op.isContainerBlock()) {
             return { openingTag: '', closingTag: '', content: value_types_1.NewLine };
         }
@@ -35,11 +62,19 @@ var OpToHtmlConverter = (function () {
             tags.push('span');
         }
         var beginTags = [], endTags = [];
+        var imgTag = "img";
+        var isImageLink = function (tag) { return tag === imgTag && !!_this.op.attributes.link; };
         for (var _i = 0, tags_1 = tags; _i < tags_1.length; _i++) {
             var tag = tags_1[_i];
+            if (isImageLink(tag)) {
+                beginTags.push(funcs_html_1.makeStartTag('a', this.getLinkAttrs()));
+            }
             beginTags.push(funcs_html_1.makeStartTag(tag, attrs));
             endTags.push(tag === 'img' ? '' : funcs_html_1.makeEndTag(tag));
-            attrs = null;
+            if (isImageLink(tag)) {
+                endTags.push(funcs_html_1.makeEndTag('a'));
+            }
+            attrs = [];
         }
         endTags.reverse();
         return {
@@ -60,6 +95,9 @@ var OpToHtmlConverter = (function () {
     };
     OpToHtmlConverter.prototype.getCssClasses = function () {
         var attrs = this.op.attributes;
+        if (this.options.inlineStyles) {
+            return [];
+        }
         var propsArr = ['indent', 'align', 'direction', 'font', 'size'];
         if (this.options.allowBackgroundClasses) {
             propsArr.push('background');
@@ -74,34 +112,60 @@ var OpToHtmlConverter = (function () {
             .map(this.prefixClass.bind(this));
     };
     OpToHtmlConverter.prototype.getCssStyles = function () {
+        var _this = this;
         var attrs = this.op.attributes;
         var propsArr = [['color']];
-        if (!this.options.allowBackgroundClasses) {
+        if (!!this.options.inlineStyles || !this.options.allowBackgroundClasses) {
             propsArr.push(['background', 'background-color']);
+        }
+        if (this.options.inlineStyles) {
+            propsArr = propsArr.concat([
+                ['indent'],
+                ['align', 'text-align'],
+                ['direction'],
+                ['font', 'font-family'],
+                ['size']
+            ]);
         }
         return propsArr
             .filter(function (item) { return !!attrs[item[0]]; })
-            .map(function (item) { return item._preferSecond() + ':' + attrs[item[0]]; });
+            .map(function (item) {
+            var attribute = item[0];
+            var attrValue = attrs[attribute];
+            var attributeConverter = (_this.options.inlineStyles && _this.options.inlineStyles[attribute]) ||
+                exports.DEFAULT_INLINE_STYLES[attribute];
+            if (typeof (attributeConverter) === 'object') {
+                return attributeConverter[attrValue];
+            }
+            else if (typeof (attributeConverter) === 'function') {
+                var converterFn = attributeConverter;
+                return converterFn(attrValue, _this.op);
+            }
+            else {
+                return arr.preferSecond(item) + ':' + attrValue;
+            }
+        })
+            .filter(function (item) { return item !== undefined; });
     };
     OpToHtmlConverter.prototype.getTagAttributes = function () {
-        if (this.op.attributes.code) {
+        if (this.op.attributes.code && !this.op.isLink()) {
             return [];
         }
-        var makeAttr = function (k, v) { return ({ key: k, value: v }); };
+        var makeAttr = this.makeAttr.bind(this);
         var classes = this.getCssClasses();
         var tagAttrs = classes.length ? [makeAttr('class', classes.join(' '))] : [];
         if (this.op.isImage()) {
             this.op.attributes.width && (tagAttrs = tagAttrs.concat(makeAttr('width', this.op.attributes.width)));
-            if (typeof this.op.insert.value === 'object' && this.op.insert.value.url) {
-              this.op.insert.value = this.op.insert.value.url;
-            }
-            return tagAttrs.concat(makeAttr('src', (this.op.insert.value + '')._scrubUrl()));
+            return tagAttrs.concat(makeAttr('src', this.op.insert.value));
         }
-        if (this.op.isFormula() || this.op.isContainerBlock()) {
+        if (this.op.isACheckList()) {
+            return tagAttrs.concat(makeAttr('data-checked', this.op.isCheckedList() ? 'true' : 'false'));
+        }
+        if (this.op.isFormula()) {
             return tagAttrs;
         }
         if (this.op.isVideo()) {
-            return tagAttrs.concat(makeAttr('frameborder', '0'), makeAttr('allowfullscreen', 'true'), makeAttr('src', (this.op.insert.value + '')._scrubUrl()));
+            return tagAttrs.concat(makeAttr('frameborder', '0'), makeAttr('allowfullscreen', 'true'), makeAttr('src', this.op.insert.value));
         }
         if (this.op.isMentions()) {
             var mention = this.op.attributes.mention;
@@ -109,10 +173,10 @@ var OpToHtmlConverter = (function () {
                 tagAttrs = tagAttrs.concat(makeAttr('class', mention.class));
             }
             if (mention['end-point'] && mention.slug) {
-                tagAttrs = tagAttrs.concat(makeAttr('href', funcs_html_1.encodeLink(mention['end-point'] + '/' + mention.slug)));
+                tagAttrs = tagAttrs.concat(makeAttr('href', mention['end-point'] + '/' + mention.slug));
             }
             else {
-                tagAttrs = tagAttrs.concat(makeAttr('href', 'javascript:void(0)'));
+                tagAttrs = tagAttrs.concat(makeAttr('href', 'about:blank'));
             }
             if (mention.target) {
                 tagAttrs = tagAttrs.concat(makeAttr('target', mention.target));
@@ -120,24 +184,33 @@ var OpToHtmlConverter = (function () {
             return tagAttrs;
         }
         var styles = this.getCssStyles();
-        var styleAttr = styles.length ? [makeAttr('style', styles.join(';'))] : [];
-        tagAttrs = tagAttrs.concat(styleAttr);
+        if (styles.length) {
+            tagAttrs.push(makeAttr('style', styles.join(';')));
+        }
+        if (this.op.isContainerBlock()) {
+            return tagAttrs;
+        }
         if (this.op.isLink()) {
-            var target = this.op.attributes.target || this.options.linkTarget;
-            tagAttrs = tagAttrs
-                .concat(makeAttr('href', funcs_html_1.encodeLink(this.op.attributes.link)))
-                .concat(target ? makeAttr('target', target) : []);
-            if (!!this.options.linkRel && OpToHtmlConverter.IsValidRel(this.options.linkRel)) {
-                tagAttrs.push(makeAttr('rel', this.options.linkRel));
-            }
+            tagAttrs = tagAttrs.concat(this.getLinkAttrs());
+        }
+        return tagAttrs;
+    };
+    OpToHtmlConverter.prototype.makeAttr = function (k, v) {
+        return { key: k, value: v };
+    };
+    OpToHtmlConverter.prototype.getLinkAttrs = function () {
+        var tagAttrs = [];
+        var target = this.op.attributes.target || this.options.linkTarget;
+        tagAttrs = tagAttrs
+            .concat(this.makeAttr('href', this.op.attributes.link))
+            .concat(target ? this.makeAttr('target', target) : []);
+        if (!!this.options.linkRel && OpToHtmlConverter.IsValidRel(this.options.linkRel)) {
+            tagAttrs.push(this.makeAttr('rel', this.options.linkRel));
         }
         return tagAttrs;
     };
     OpToHtmlConverter.prototype.getTags = function () {
         var attrs = this.op.attributes;
-        if (attrs.code) {
-            return ['code'];
-        }
         if (!this.op.isText()) {
             return [this.op.isVideo() ? 'iframe'
                     : this.op.isImage() ? 'img'
@@ -151,18 +224,19 @@ var OpToHtmlConverter = (function () {
             ['indent', positionTag]];
         for (var _i = 0, blocks_1 = blocks; _i < blocks_1.length; _i++) {
             var item = blocks_1[_i];
-            if (attrs[item[0]]) {
-                return item[0] === 'header' ? ['h' + attrs[item[0]]] : [item._preferSecond()];
+            var firstItem = item[0];
+            if (attrs[firstItem]) {
+                return firstItem === 'header' ? ['h' + attrs[firstItem]] : [arr.preferSecond(item)];
             }
         }
-        return [['link', 'a'], ['script'],
+        return [['link', 'a'], ['mentions', 'a'], ['script'],
             ['bold', 'strong'], ['italic', 'em'], ['strike', 's'], ['underline', 'u'],
-            ['mentions', 'a']]
+            ['code']]
             .filter(function (item) { return !!attrs[item[0]]; })
             .map(function (item) {
             return item[0] === 'script' ?
                 (attrs[item[0]] === value_types_1.ScriptType.Sub ? 'sub' : 'sup')
-                : item._preferSecond();
+                : arr.preferSecond(item);
         });
     };
     OpToHtmlConverter.IsValidRel = function (relStr) {

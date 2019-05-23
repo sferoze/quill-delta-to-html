@@ -2,7 +2,6 @@ import 'mocha';
 import * as assert from 'assert';
 
 import {MentionSanitizer} from "./../../src/mentions/MentionSanitizer";
-import { IMention } from '../../src/mentions/MentionSanitizer';
 
 describe('MentionSanitizer', function () {
 
@@ -16,9 +15,9 @@ describe('MentionSanitizer', function () {
                   avatar: 'http://www.yahoo.com',
                   'end-point': 'http://abc.com',
                   slug: 'my-name'
-                }
+                },{}
             );
-            console.log(sanitized);
+            //console.log(sanitized);
             assert.deepEqual(sanitized, {
                'class': 'A-cls-9',
                id: 'An-id_9:.',
@@ -29,8 +28,8 @@ describe('MentionSanitizer', function () {
              })
         });
 
-        assert.deepEqual(MentionSanitizer.sanitize(<any>'a'), {});
+        assert.deepEqual(MentionSanitizer.sanitize(<any>'a', {}), {});
 
-        assert.deepEqual(MentionSanitizer.sanitize({id: 'sb'}), {id: 'sb'});
+        assert.deepEqual(MentionSanitizer.sanitize({id: 'sb'}, {}), {id: 'sb'});
     });
 });

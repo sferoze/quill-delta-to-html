@@ -1,12 +1,10 @@
 
 import { DeltaInsertOp } from './../DeltaInsertOp';
-import { NewLine } from './../value-types';
-import './../extensions/Array';
+import {IArraySlice, flatten, groupConsecutiveElementsWhile, sliceFromReverseWhile} from './../helpers/array';
 
 import {
-   VideoItem, InlineGroup, BlockGroup, ListGroup, ListItem, TDataGroup
+   VideoItem, InlineGroup, BlockGroup, TDataGroup, BlotBlock
 } from './group-types';
-import { ListNester } from './ListNester';
 
 class Grouper {
 
@@ -15,7 +13,7 @@ class Grouper {
       let result: TDataGroup[] = [];
 
       const canBeInBlock = (op: DeltaInsertOp) => {
-         return !(op.isJustNewline() || op.isVideo() || op.isContainerBlock());
+         return !(op.isJustNewline() || op.isCustomBlock() || op.isVideo() || op.isContainerBlock());
       };
       const isInlineData = (op: DeltaInsertOp) => op.isInline();
 
@@ -27,15 +25,18 @@ class Grouper {
 
          if (op.isVideo()) {
             result.push(new VideoItem(op));
-         
+
+         } else if (op.isCustomBlock()) {
+            result.push(new BlotBlock(op));
+            
          } else if (op.isContainerBlock()) {
-            opsSlice = ops._sliceFromReverseWhile(i - 1, canBeInBlock);
+            opsSlice = sliceFromReverseWhile(ops, i - 1, canBeInBlock);
 
             result.push(new BlockGroup(op, opsSlice.elements));
             i = opsSlice.sliceStartsAt > -1 ? opsSlice.sliceStartsAt : i;
 
          } else {
-            opsSlice = ops._sliceFromReverseWhile(i - 1, isInlineData);
+            opsSlice = sliceFromReverseWhile(ops, i - 1, isInlineData);
             result.push(new InlineGroup(opsSlice.elements.concat(op)));
             i = opsSlice.sliceStartsAt > -1 ? opsSlice.sliceStartsAt : i;
          }
@@ -50,7 +51,7 @@ class Grouper {
       blockquotes: true
    }): Array<TDataGroup | BlockGroup[]> {
 
-      return groups._groupConsecutiveElementsWhile((g: TDataGroup, gPrev: TDataGroup) => {
+      return groupConsecutiveElementsWhile(groups, (g: TDataGroup, gPrev: TDataGroup) => {
          if (!(g instanceof BlockGroup) || !(gPrev instanceof BlockGroup)) {
             return false;
          }
@@ -75,12 +76,12 @@ class Grouper {
             return elm;
          }
          var groupsLastInd = elm.length - 1;
-         elm[0].ops = elm.map((g: BlockGroup, i: number) => {
+         elm[0].ops = flatten(elm.map((g: BlockGroup, i: number) => {
             if (!g.ops.length) {
                return [newLineOp];
             }
             return g.ops.concat(i < groupsLastInd ? [newLineOp] : []);
-         })._flatten();
+         }));
          return elm[0];
       });
    }

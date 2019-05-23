@@ -4,7 +4,9 @@ const NewLine = "\n" as NewLine;
 
 enum ListType {
    Ordered = 'ordered',
-   Bullet = 'bullet'
+   Bullet = 'bullet',
+   Checked = 'checked',
+   Unchecked = 'unchecked'
 }
 
 enum ScriptType {
@@ -18,7 +20,8 @@ enum DirectionType {
 
 enum AlignType {
    Center = "center",
-   Right = "right"
+   Right = "right",
+   Justify = "justify"
 }
 
 enum DataType {

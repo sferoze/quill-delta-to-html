@@ -3,9 +3,13 @@ declare class InlineGroup {
     readonly ops: DeltaInsertOp[];
     constructor(ops: DeltaInsertOp[]);
 }
-declare class VideoItem {
+declare class SingleItem {
     readonly op: DeltaInsertOp;
     constructor(op: DeltaInsertOp);
+}
+declare class VideoItem extends SingleItem {
+}
+declare class BlotBlock extends SingleItem {
 }
 declare class BlockGroup {
     readonly op: DeltaInsertOp;
@@ -18,8 +22,8 @@ declare class ListGroup {
 }
 declare class ListItem {
     readonly item: BlockGroup;
-    innerList: ListGroup;
-    constructor(item: BlockGroup, innerList?: ListGroup);
+    innerList: ListGroup | null;
+    constructor(item: BlockGroup, innerList?: ListGroup | null);
 }
 declare type TDataGroup = VideoItem | InlineGroup | BlockGroup | ListItem | ListGroup;
-export { VideoItem, InlineGroup, BlockGroup, ListGroup, ListItem, TDataGroup };
+export { VideoItem, BlotBlock, InlineGroup, BlockGroup, ListGroup, ListItem, TDataGroup };

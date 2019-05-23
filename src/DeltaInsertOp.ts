@@ -8,12 +8,12 @@ class DeltaInsertOp {
    readonly insert: InsertData;
    readonly attributes: IOpAttributes;
 
-   constructor(insertVal: InsertData | string, attributes?: IOpAttributes) {
+   constructor(insertVal: InsertData | string, attrs?: IOpAttributes) {
       if (typeof insertVal === 'string') {
          insertVal = new InsertDataQuill(DataType.Text, insertVal + '');
       }
       this.insert = insertVal;
-      this.attributes = attributes || {};
+      this.attributes = attrs || {};
    }
 
    static createNewLineOp() {
@@ -28,10 +28,10 @@ class DeltaInsertOp {
    }
 
    isBlockquote(): boolean {
-      return this.attributes.blockquote;
+      return !!this.attributes.blockquote;
    }
 
-   isHeader():boolean {
+   isHeader(): boolean {
       return !!this.attributes.header;
    }
 
@@ -55,7 +55,7 @@ class DeltaInsertOp {
    }
 
    isInline() {
-      return !(this.isContainerBlock() || this.isVideo());
+      return !(this.isContainerBlock() || this.isVideo() || this.isCustomBlock());
    }
 
    isCodeBlock() {
@@ -67,7 +67,12 @@ class DeltaInsertOp {
    }
 
    isList() {
-      return this.isOrderedList() || this.isBulletList();
+      return (
+         this.isOrderedList() ||
+         this.isBulletList() ||
+         this.isCheckedList() ||
+         this.isUncheckedList()
+      );
    }
 
    isOrderedList() {
@@ -78,8 +83,24 @@ class DeltaInsertOp {
       return this.attributes.list === ListType.Bullet;
    }
 
+   isCheckedList() {
+      return this.attributes.list === ListType.Checked;
+   }
+
+   isUncheckedList() {
+      return this.attributes.list === ListType.Unchecked;
+   }
+
+   isACheckList() {
+      return this.attributes.list == ListType.Unchecked ||
+      this.attributes.list === ListType.Checked
+   }
+
    isSameListAs(op: DeltaInsertOp): boolean {
-      return this.attributes.list === op.attributes.list && !!op.attributes.list;
+      return !!op.attributes.list && (
+         this.attributes.list === op.attributes.list || 
+         op.isACheckList() && this.isACheckList()
+      );
    }
 
    isText() {
@@ -104,9 +125,10 @@ class DeltaInsertOp {
 
    isCustom() {
       return this.insert instanceof InsertDataCustom;
-      // return !(this.isText() || 
-      //    this.isVideo() || this.isImage() || this.isFormula()
-      // )
+   }
+
+   isCustomBlock() {
+      return this.isCustom() && !!this.attributes.renderAsBlock
    }
 
    isMentions() {
